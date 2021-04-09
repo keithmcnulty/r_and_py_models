@@ -9,7 +9,7 @@ library(reticulate)
 
 For these methods to work, you will need to point to a Python executable
 in a Conda environment or Virtualenv that contains all the Python
-packages you need. You can do this by usng a `.Rprofile` file in your
+packages you need. You can do this by using a `.Rprofile` file in your
 project directory. See the contents of the `.Rprofile` file in this
 project to see how I have done this.
 

@@ -7,7 +7,7 @@ from sklearn.metrics import classification_report
 from xgboost import XGBClassifier
 
 # spit data into train test
-def split_data(df: pd.DataFrame, parameters: dict) -> list:
+def split_data(df: pd.DataFrame, parameters: dict) -> dict:
     """
     Split and select data for modeling
     :param df: Pandas Dataframe
@@ -22,7 +22,7 @@ def split_data(df: pd.DataFrame, parameters: dict) -> list:
     return dict(X_train = X_train, X_test = X_test, y_train = y_train, y_test = y_test)
 
 # scale data
-def scale_data(X_train: pd.DataFrame, X_test: pd.DataFrame) -> list:
+def scale_data(X_train: pd.DataFrame, X_test: pd.DataFrame) -> dict:
     """
     Scale data for modelling
     :param X_train: Pandas DataFrame
@@ -65,7 +65,7 @@ def train_xgb_crossvalidated(
     return xgb_clf
 
 # generate classification report
-def generate_classification_report(model, X_test: pd.DataFrame, y_test: pd.DataFrame):
+def generate_classification_report(model, X_test: pd.DataFrame, y_test: pd.DataFrame) -> pd.DataFrame:
     """
     Generate classification report for model
     :param model: model object
