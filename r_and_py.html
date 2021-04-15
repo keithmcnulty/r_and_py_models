@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Using Python and R Together</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Keith McNulty" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link rel="stylesheet" href="style.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Using Python and R Together
+### Keith McNulty
+
+---
+
+
+
+
+class: left, middle, r-logo
+
+## Key resources
+
+* [Github repo](https://github.com/keithmcnulty/r_and_py_models) containing everything you need for this talk
+
+* [Details and tutorials](https://rstudio.github.io/reticulate/) on the `reticulate` package which is used to translate between R and Python 
+
+---
+class: left, middle, r-logo
+
+## Python Environments
+
+All Python projects need an environment where all supporting packages are installed.  Virtualenv and Conda are the two most common environment management tools.
+
+For this project you'll need a Python environment with the following packages installed: `pandas`, `scipy`, `python-pptx`, `scikit-learn`, `xgboost`. 
+
+Conda example terminal commands:
+
+```
+# create conda env and install packages
+conda create --name r_and_py_models python=3.7
+conda activate
+conda install &lt;list of packages&gt;
+
+# get environment path for use with reticulate
+conda info 
+
+```
+
+
+
+---
+class: left, middle, r-logo
+
+## Why would someone even need to use two languages
+
+* In general, each language has its strengths.  There are things its generally easier to do in Python (eg Machine Learning), and there are things that its easier to do in R (eg, inferential statistics, tidy data).
+
+* You may want to work primarily in one language but need specific functionality that's more easily available in the other language.
+
+* You may have been 'handed' code in Python by someone else but you need to get it working in R.
+
+* You don't have the time or interest to recode into a single language.
+
+---
+class: left, middle, r-logo
+
+## Setting up a project involving both R and Python
+
+* Work in RStudio
+
+* Use the `reticulate` package in R
+
+* Point to a Python *executable* inside an environment with all the required packages by setting the `RETICULATE_PYTHON` environment variable in a `.Rprofile` file which executes at project startup.  Here is what mine looks like.
+
+
+```r
+# Force the use of a specific python environment - note that path must be to the python executable
+Sys.setenv(RETICULATE_PYTHON = "/Users/keithmcnulty/opt/anaconda3/envs/r_and_py_models/bin/python3")
+
+# print a confirmation on project startup/R restart
+print(paste("Python environment forced to", Sys.getenv("RETICULATE_PYTHON")))
+```
+
+---
+class: left, middle, r-logo
+
+## Ways to use Python in RStudio
+
+1.  Write a `.py` script.  File &gt; New File &gt; Python Script
+
+2.  Code directly in the Python interpreter to test code:  `reticulate::repl_python()`
+
+3.  Write an R Markdown document with R code wrapped in `{r}` and Python code wrapped in `{python}`
+
+---
+class: left, middle, r-logo
+
+## Exchanging objects between R and Python
+
+Remember that you always need `reticulate` loaded:
+
+
+```r
+library(reticulate)
+```
+
+* The `reticulate` package makes it easy to access Python objects in R and vice versa.  
+
+* If `my_python_object` is a Python object, it can be accessed in R using `py$my_python_object`.  
+
+* If `my_r_object` is an R object, it can be accessed in Python using `r.my_r_object`.
+
+---
+class: left, middle, r-logo
+
+## Let's create a couple of things in Python and use them in R
+
+
+```python
+## create a dict in Python
+my_dict={'team_python': ['dale', 'brenden', 'matthieu'], 'team_r': ['liz', 'rachel', 'alex', 'jordan']}
+
+## define a function in Python
+def is_awesome(who: str) -&gt; str:
+  return '{x} is awesome!'.format(x=who) 
+```
+
+
+```r
+my_list &lt;- py$my_dict
+str(my_list)
+```
+
+```
+## List of 2
+##  $ team_python: chr [1:3] "dale" "brenden" "matthieu"
+##  $ team_r     : chr [1:4] "liz" "rachel" "alex" "jordan"
+```
+
+```r
+my_list$team_python
+```
+
+```
+## [1] "dale"     "brenden"  "matthieu"
+```
+
+```r
+is_awesome &lt;- py$is_awesome
+is_awesome('R')
+```
+
+```
+## [1] "R is awesome!"
+```
+
+---
+class: left, middle, r-logo
+
+## Now let's do the opposite
+
+
+```r
+# a vector in R
+my_vec &lt;- c("data engineering", "data science")
+
+# a function in R
+unique_words &lt;- function(string) {
+  unique(unlist(strsplit(string, " ")))
+}
+```
+
+
+```python
+my_list=r.my_vec
+my_list
+```
+
+```
+## ['data engineering', 'data science']
+```
+
+```python
+unique_words=r.unique_words
+unique_words(my_list)
+```
+
+```
+## ['data', 'engineering', 'science']
+```
+
+---
+class: left, middle, r-logo
+
+## More details on type conversions
+
+&lt;img src="www/types.png" width="2333" /&gt;
+
+---
+class: left, middle, r-logo
+
+## Example Scenario 1: Editing Powerpoint
+
+You have a simple Powerpoint document in the `templates` folder of this project called `ppt-template.pptx`.  You want to automatically edit it by replacing some of the content with data from csv files for 20 different groups, creating 20 different Powerpoint documents - one for each group.
+
+You have a function provided to you in Python which does this replacement.  It is in the file `edit_pres.py` in the `python` folder of this project.  However, you are not great with Python and you much prefer to manage data in R.
+
+First, you source the Python function into your R session and take a look at the function, which is now automatically an R function:
+
+
+```r
+source_python("python/edit_pres.py")
+
+edit_pres
+```
+
+```
+## &lt;function edit_pres at 0x7fc2190355f0&gt;
+```
+
+---
+class: left, middle, r-logo
+
+## Example Scenario 1: Editing Powerpoint
+
+The function takes five arguments, a target group name, a table of summary statistics for all groups, a specific data table for the target group, the name of the input file and the name of the output file.
+
+Let's run the function for one group using some of the data in our `data` folder:
+
+
+```r
+# all summary stats
+chart_df &lt;- read.csv("data/chart_df.csv")
+
+# Group A table
+table_A &lt;- read.csv("data/table_A.csv")
+
+input &lt;- "templates/ppt-template.pptx"
+output &lt;- "group_A.pptx"
+
+edit_pres("A", chart_df, table_A, input, output)
+```
+
+```
+## [1] "Successfully saved version A!"
+```
+
+---
+class: left, middle, r-logo
+
+## Example Scenario 1: Editing Powerpoint
+
+Now we can get all of our data into a tidy dataframe:
+
+
+```r
+library(dplyr)
+
+# load in data files
+for (file in list.files("data")) {
+  splits &lt;- strsplit(file, "\\.")
+  assign(splits[[1]][1],
+         read.csv(paste0("data/", file)))
+} 
+
+# rowwise mutate a list column onto chart_df containing the table data for each group
+full_data &lt;- chart_df %&gt;% 
+  rowwise() %&gt;% 
+  dplyr::mutate(table = list(get(paste0("table_", group))))
+```
+
+---
+class: left, middle, r-logo
+
+## Example Scenario 1: Editing Powerpoint
+
+Let's look at a few rows and columns:
+
+
+```r
+head(full_data) %&gt;% 
+  dplyr::select(group, cat1_1, cat1_2, table)
+```
+
+```
+## # A tibble: 6 x 4
+## # Rowwise: 
+##   group cat1_1 cat1_2 table           
+##   &lt;chr&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;list&gt;          
+## 1 A        5.7    2.6 &lt;df[,5] [8 × 5]&gt;
+## 2 B        5.2    1.6 &lt;df[,5] [8 × 5]&gt;
+## 3 C        3.6    1.3 &lt;df[,5] [8 × 5]&gt;
+## 4 D        1.1    4.5 &lt;df[,5] [8 × 5]&gt;
+## 5 E        3.8    3.6 &lt;df[,5] [8 × 5]&gt;
+## 6 F        1.7    5.3 &lt;df[,5] [8 × 5]&gt;
+```
+
+---
+class: left, middle, r-logo
+
+## Example Scenario 1: Editing Powerpoint
+
+Now we can mutate our `edit_pres()` function to generate all the powerpoint in a single command.
+
+
+```r
+# rowwise mutate the edit_pres function to generate parametrized powerpoint
+generate_ppt &lt;- full_data %&gt;% 
+  rowwise() %&gt;% 
+  dplyr::mutate(
+    ppt = edit_pres(group, ., table, "templates/ppt-template.pptx", 
+                                paste0("report_group_", group, ".pptx"))
+    )
+
+# let's see what happened
+head(generate_ppt) %&gt;% 
+  dplyr::select(group, ppt)
+```
+
+```
+## # A tibble: 6 x 2
+## # Rowwise: 
+##   group ppt                          
+##   &lt;chr&gt; &lt;chr&gt;                        
+## 1 A     Successfully saved version A!
+## 2 B     Successfully saved version B!
+## 3 C     Successfully saved version C!
+## 4 D     Successfully saved version D!
+## 5 E     Successfully saved version E!
+## 6 F     Successfully saved version F!
+```
+
+---
+class: left, middle, r-logo
+
+## Example Scenario 2: Running XGBoost in R
+
+You've been asked to train a 10-fold cross-validated XGBoost model on a set of data about wines.  You want to see how accurately you can predict a high quality wine.
+
+You have never run XGBoost before and you're not great with Python.
+
+However, a colleague has given you a set of Python functions which they use for training XGBoost models.  These functions are in `python_functions.py`.  You source them into R.
+
+
+```r
+source_python("python_functions.py")
+```
+
+---
+class: left, middle, r-logo
+
+## Example Scenario 2: Running XGBoost in R
+
+We create our data set by downloading the data, adding a binary 'red' wine feature and defining 'high quality' to be a quality score of 7 or more.
+
+
+```r
+white_wines &lt;- read.csv("https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-white.csv", sep = ";")
+red_wines &lt;- read.csv("https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv", sep = ";")
+
+white_wines$red &lt;- 0
+red_wines$red &lt;- 1
+
+wine_data &lt;- white_wines %&gt;% 
+  bind_rows(red_wines) %&gt;% 
+  mutate(high_quality = ifelse(quality &gt;= 7, 1, 0)) %&gt;% 
+  select(-quality)
+```
+
+---
+class: left, middle, r-logo
+
+## Example Scenario 2: Running XGBoost in R
+
+If we look in the Python code, we can see that all our parameters are expected to be in a dict.  In R, this means they need to be in a named list, so let's create the list of parameters we will use:
+
+
+```r
+params &lt;- list(
+  input_cols = colnames(wine_data)[colnames(wine_data) != 'high_quality'],
+  target_col = 'high_quality',
+  test_size = 0.3,
+  random_state = 123,
+  subsample = (3:9)/10, 
+  xgb_max_depth = 3:9,
+  colsample_bytree = (3:9)/10,
+  xgb_min_child_weight = 1:4,
+  k = 10,
+  k_shuffle = TRUE,
+  n_iter = 10,
+  scoring = 'f1',
+  error_score = 0,
+  verbose = 1,
+  n_jobs = -1
+)
+```
+
+---
+class: left, middle, r-logo
+
+## Example Scenario 2: Running XGBoost in R
+
+Our first function `split_data()` expects a data frame input and will output a list of four data frames - two for training and two for testing.
+
+
+```r
+split &lt;- split_data(wine_data, parameters = params)
+
+# check we got what we wanted 
+names(split)
+```
+
+```
+## [1] "X_train" "X_test"  "y_train" "y_test"
+```
+
+
+---
+class: left, middle, r-logo
+
+## Example Scenario 2: Running XGBoost in R
+
+Our next function `scale_data()` scales the features to prepare them for XGBoost.  It expects two feature dataframes for train and test and outputs a list of two scaled dataframes.
+
+
+```r
+scaled &lt;- scale_data(split$X_train, split$X_test)
+
+# check we got what we wanted 
+names(scaled)
+```
+
+```
+## [1] "X_train_scaled" "X_test_scaled"
+```
+
+
+---
+class: left, middle, r-logo
+
+## Example Scenario 2: Running XGBoost in R
+
+Next we train our XGBoost model with 10-fold cross-validation.  This function expects a scaled feature dataframe, a target dataframe and some parameters.
+
+
+```r
+# created trained model object
+trained &lt;- train_xgb_crossvalidated(
+  scaled$X_train_scaled, 
+  split$y_train, 
+  parameters = params
+)
+
+# we can check that we can predict from the trained model
+test_obs &lt;- py_to_r(scaled$X_test_scaled)
+trained$predict(test_obs[1:5, ])
+```
+
+```
+## [1] 0 0 0 1 0
+```
+
+---
+class: left, middle, r-logo
+
+## Example Scenario 2: Running XGBoost in R
+
+Our last function generates a classification report - it expects a trained model, a set of test features and targets, and outputs a report dataframe:
+
+
+```r
+generate_classification_report(
+  trained,
+  scaled$X_test_scaled,
+  split$y_test
+)
+```
+
+```
+##              precision    recall  f1-score
+## 0.0          0.8965937 0.9460847 0.9206746
+## 1.0          0.7254902 0.5663265 0.6361032
+## accuracy     0.8697436 0.8697436 0.8697436
+## macro avg    0.8110419 0.7562056 0.7783889
+## weighted avg 0.8621975 0.8697436 0.8634684
+```
+
+---
+class: left, middle, r-logo
+
+## Deploying Shiny Apps that use R and Python together
+
+* The server (eg ShinyServer or RStudioConnect) will need to have Python enabled and a Python version installed
+
+* Your local Python version on which you built the app will need to be compatible with the one that's on the server - you can ensure this in you conda/virtualenv setup.
+
+* If deploying from Github, when you run `rsconnect::writeManifest()` it will also create the `requirements.txt` file for your Python packages.  This should be pushed to Github along with `manifest.json`
+
+* DO NOT push `.Rprofile` to Github.  This will cause deployment to fail.  For safety, add `.Rprofile` to `.gitignore` if you are intending to build a deployed app.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

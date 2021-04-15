@@ -1,0 +1,10 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+libs
+*.Rproj
+group*
+output.pptx
+report*
